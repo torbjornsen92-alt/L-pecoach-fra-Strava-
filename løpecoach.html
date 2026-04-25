@@ -380,48 +380,48 @@ async function fetchActivityDetail(activityId) {
 }
 
 function parseDragTimes(title, description) {
-  // Look for patterns like "3:39 - 41 - 44" or "4:34 - 39 - 41"
-  // First number is full min:sec, subsequent can be just seconds
   var text = (title || '') + ' ' + (description || '');
   
-  // Pattern: starts with M:SS then - SS - SS etc
-  var fullPattern = /(\d+:\d{2})\s*[-–]\s*([\d]{2}(?:\s*[-–]\s*[\d]{2})*)/g;
-  var matches = [];
-  var match;
-  
-  while ((match = fullPattern.exec(text)) !== null) {
-    var first = match[1]; // e.g. "3:39"
-    var rest = match[2];  // e.g. "41 - 44 - 45"
-    var parts = [first];
-    var restParts = rest.split(/\s*[-–]\s*/);
-    
-    // Base minutes from first time
-    var baseMin = parseInt(first.split(':')[0]);
-    
-    restParts.forEach(function(p) {
-      p = p.trim();
-      if (p.length <= 2) {
-        // Just seconds — use same minute as first
-        parts.push(baseMin + ':' + p.padStart(2,'0'));
-      } else if (p.indexOf(':') > -1) {
-        parts.push(p);
+  // Format 1: comma-separated full times like "4:35, 4:35, 4:30" (pace per km)
+  var commaMatch = text.match(/(\d:\d{2}(?:,\s*\d:\d{2})+)/);
+  if (commaMatch) {
+    var parts = commaMatch[1].split(',').map(function(s) { return s.trim(); });
+    if (parts.length >= 2) return { times: parts, isPace: true };
+  }
+
+  // Format 2: "M:SS - SS - SS" where subsequent numbers share same minute
+  var dashMatch = text.match(/(\d):(\d{2})\s*[-\u2013]\s*((\d{2}\s*[-\u2013]\s*)*\d{2})/);
+  if (dashMatch) {
+    var baseMin = parseInt(dashMatch[1]);
+    var times = [baseMin + ':' + dashMatch[2]];
+    var rest = dashMatch[3].split(/\s*[-\u2013]\s*/);
+    rest.forEach(function(s) {
+      s = s.trim();
+      if (s.length >= 1 && s.length <= 2) {
+        times.push(baseMin + ':' + s.padStart(2, '0'));
       }
     });
-    
-    if (parts.length >= 2) matches = parts;
+    if (times.length >= 2) return { times: times, isPace: false };
   }
-  
-  return matches; // array of "M:SS" strings
+
+  return null;
 }
 
-function dragTimesToPace(timeStr, distanceMeters) {
-  // timeStr = "3:39" for 400m -> pace per km
+function dragTimesToPace(timeStr, distanceMeters, isPace) {
   var parts = timeStr.split(':');
-  var totalSec = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-  var paceSecPerKm = totalSec / (distanceMeters / 1000);
-  var pMin = Math.floor(paceSecPerKm / 60);
-  var pSec = Math.round(paceSecPerKm % 60).toString().padStart(2,'0');
-  return pMin + ':' + pSec;
+  var min = parseInt(parts[0]);
+  var sec = parseInt(parts[1]);
+  if (isPace) {
+    // Already pace per km
+    return min + ':' + parts[1];
+  } else {
+    // Lap time — convert to pace per km
+    var totalSec = min * 60 + sec;
+    var paceSecPerKm = totalSec / (distanceMeters / 1000);
+    var pMin = Math.floor(paceSecPerKm / 60);
+    var pSec = Math.round(paceSecPerKm % 60).toString().padStart(2, '0');
+    return pMin + ':' + pSec;
+  }
 }
 
 function guessDragDistance(title) {
@@ -452,30 +452,77 @@ async function loadIntervals(header, activityId) {
   var description = detail ? (detail.description || '') : '';
   
   // Try description-based parsing first
-  var dragTimes = parseDragTimes(title, description);
+  var parsed = parseDragTimes(title, description);
   var dragDist = guessDragDistance(title);
-  
-  if (dragTimes.length >= 2 && dragDist) {
-    // Build intervals from parsed times
-    var intervals = dragTimes.map(function(t, i) {
+
+  if (parsed && parsed.times.length >= 2 && (dragDist || parsed.isPace)) {
+    // Fetch streams in parallel to get HR per drag
+    var streamsPromise = fetchStreams(activityId);
+
+    var intervals = parsed.times.map(function(t, i) {
       var parts = t.split(':');
-      var totalSec = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-      var pace = dragTimesToPace(t, dragDist);
+      var min = parseInt(parts[0]), sec = parseInt(parts[1]);
+      var totalSec = parsed.isPace
+        ? (dragDist ? (min * 60 + sec) * (dragDist / 1000) : min * 60 + sec)
+        : min * 60 + sec;
+      var pace = dragTimesToPace(t, dragDist || 1000, parsed.isPace);
       return {
         num: i + 1,
-        duration: totalSec,
-        distKm: (dragDist / 1000).toFixed(2),
+        duration: Math.round(totalSec),
+        distKm: dragDist ? (dragDist / 1000).toFixed(2) : '—',
         avgHR: null,
         pace: pace,
-        gap: pace, // no elevation data from description
-        elevGain: 0,
-        elevLoss: 0,
-        grade: '0.0',
+        gap: pace,
+        elevGain: 0, elevLoss: 0, grade: '0.0',
         fromDescription: true
       };
     });
+
+    // Show immediately, then enrich with HR from streams
     intervalCache[activityId] = intervals;
     renderIntervalTable(container, intervals);
+
+    // Enrich with HR
+    streamsPromise.then(function(streams) {
+      if (!streams || !streams.heartrate || !streams.velocity_smooth) return;
+      var hr = streams.heartrate.data;
+      var vel = streams.velocity_smooth.data;
+      var time = streams.time.data;
+      if (!hr || !vel || !time) return;
+
+      // Find hard segments by velocity
+      var paces = vel.map(function(v) { return v > 0.5 ? 1000/v/60 : 99; });
+      var moving = paces.filter(function(p){return p<12;}).slice().sort(function(a,b){return a-b;});
+      if (moving.length < 5) return;
+      var threshold = moving[Math.floor(moving.length * 0.35)];
+
+      var segments = [];
+      var inSeg = false, segStart = 0;
+      for (var i = 5; i < paces.length - 5; i++) {
+        var win = 0;
+        for (var j=i-5;j<=i+5;j++) win += paces[j];
+        win /= 11;
+        if (win < threshold * 0.88 && !inSeg) { inSeg = true; segStart = i; }
+        else if (win >= threshold * 0.88 && inSeg) {
+          inSeg = false;
+          var dur = time[i] - time[segStart];
+          if (dur >= 30) {
+            var hrSum = 0;
+            for (var k=segStart;k<i;k++) hrSum += hr[k];
+            segments.push(Math.round(hrSum/(i-segStart)));
+          }
+        }
+      }
+
+      if (segments.length >= intervals.length) {
+        intervals.forEach(function(iv, i) {
+          iv.avgHR = segments[i] || null;
+        });
+        intervalCache[activityId] = intervals;
+        var container2 = document.getElementById('intervals-' + activityId);
+        if (container2) renderIntervalTable(container2, intervals);
+      }
+    });
     return;
   }
 
