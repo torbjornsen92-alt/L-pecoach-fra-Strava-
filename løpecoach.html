@@ -5,256 +5,95 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Løpe-coach</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0a0a;
-    --surface: #111111;
-    --surface2: #1a1a1a;
-    --border: #2a2a2a;
-    --accent: #e8ff47;
-    --accent2: #ff6b35;
-    --text: #f0f0f0;
-    --muted: #666;
-    --coach: #1e2a0e;
-    --coach-border: #4a7c1a;
-    --strava: #FC4C02;
+    --bg: #0a0a0a; --surface: #111; --surface2: #1a1a1a;
+    --border: #2a2a2a; --accent: #e8ff47; --strava: #FC4C02;
+    --text: #f0f0f0; --muted: #666; --green: #7ec850;
+    --coach: #1e2a0e; --coach-border: #4a7c1a;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 300;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 1000;
-    opacity: 0.4;
-  }
-  header {
-    padding: 24px 28px 20px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: baseline;
-    gap: 16px;
-  }
-  header h1 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 2.2rem;
-    letter-spacing: 0.05em;
-    color: var(--accent);
-    line-height: 1;
-  }
-  header span {
-    font-size: 0.75rem;
-    color: var(--muted);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-weight: 300; min-height: 100vh; display: flex; flex-direction: column; }
+  header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: 12px; flex-shrink: 0; }
+  header h1 { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; color: var(--accent); line-height: 1; letter-spacing: 0.05em; }
+  header span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
 
-/* Login screen */
-#loginScreen {
-flex: 1;
-display: flex;
-flex-direction: column;
-align-items: center;
-justify-content: center;
-gap: 32px;
-padding: 40px 28px;
-}
-.login-logo {
-font-family: ‘Bebas Neue’, sans-serif;
-font-size: 5rem;
-color: var(–border);
-line-height: 1;
-}
-.login-text {
-text-align: center;
-color: var(–muted);
-font-size: 0.9rem;
-line-height: 1.7;
-max-width: 280px;
-}
-.btn-strava {
-display: flex;
-align-items: center;
-gap: 12px;
-background: var(–strava);
-color: #fff;
-border: none;
-padding: 14px 24px;
-font-family: ‘Bebas Neue’, sans-serif;
-font-size: 1.2rem;
-letter-spacing: 0.08em;
-border-radius: 6px;
-cursor: pointer;
-transition: opacity 0.15s;
-text-decoration: none;
-}
+#loginScreen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding: 40px 24px; }
+.login-logo { font-size: 4rem; }
+.login-text { text-align: center; color: var(–muted); font-size: 14px; line-height: 1.7; max-width: 280px; }
+.btn-strava { display: flex; align-items: center; gap: 10px; background: var(–strava); color: #fff; border: none; padding: 14px 24px; font-family: ‘Bebas Neue’, sans-serif; font-size: 1.1rem; letter-spacing: 0.08em; border-radius: 6px; cursor: pointer; transition: opacity 0.15s; text-decoration: none; }
 .btn-strava:hover { opacity: 0.88; }
-.btn-strava svg { width: 22px; height: 22px; fill: white; }
+.btn-strava svg { width: 20px; height: 20px; fill: white; }
 
-/* Stats strip */
-#statsStrip {
-display: none;
-padding: 16px 28px;
-border-bottom: 1px solid var(–border);
-background: var(–surface2);
-gap: 28px;
-overflow-x: auto;
-}
+#loadingScreen { display: none; flex: 1; align-items: center; justify-content: center; flex-direction: column; gap: 16px; color: var(–muted); font-size: 14px; }
+#loadingScreen.visible { display: flex; }
+.spinner { width: 32px; height: 32px; border: 2px solid var(–border); border-top-color: var(–accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#statsStrip { display: none; padding: 12px 20px; border-bottom: 1px solid var(–border); background: var(–surface2); gap: 24px; overflow-x: auto; flex-shrink: 0; }
 #statsStrip.visible { display: flex; }
 .stat { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
-.stat-val {
-font-family: ‘Bebas Neue’, sans-serif;
-font-size: 1.6rem;
-color: var(–accent);
-line-height: 1;
-}
-.stat-label {
-font-size: 0.65rem;
-color: var(–muted);
-text-transform: uppercase;
-letter-spacing: 0.1em;
-}
+.stat-val { font-family: ‘Bebas Neue’, sans-serif; font-size: 1.5rem; color: var(–accent); line-height: 1; }
+.stat-label { font-size: 10px; color: var(–muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+#copyBar { display: none; padding: 10px 20px; border-bottom: 1px solid var(–border); background: var(–surface); flex-shrink: 0; }
+#copyBar.visible { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.btn { background: var(–accent); color: #000; border: none; padding: 9px 16px; font-family: ‘Bebas Neue’, sans-serif; font-size: 0.95rem; letter-spacing: 0.08em; border-radius: 4px; cursor: pointer; transition: opacity 0.15s; white-space: nowrap; }
+.btn:hover { opacity: 0.85; }
+.btn-outline { background: transparent; color: var(–accent); border: 1px solid var(–accent); }
+#copyStatus { font-size: 12px; color: var(–green); }
+
+/* Tabs */
+#tabs { display: none; border-bottom: 1px solid var(–border); flex-shrink: 0; }
+#tabs.visible { display: flex; }
+.tab { padding: 10px 20px; font-size: 13px; color: var(–muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; }
+.tab.active { color: var(–accent); border-bottom-color: var(–accent); }
+
+/* Interval analysis */
+#intervalView { display: none; flex: 1; overflow-y: auto; padding: 16px 20px; flex-direction: column; gap: 16px; }
+#intervalView.visible { display: flex; }
+.activity-card { background: var(–surface); border: 1px solid var(–border); border-radius: 6px; overflow: hidden; }
+.activity-header { padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+.activity-header:hover { background: var(–surface2); }
+.activity-title { font-size: 14px; font-weight: 500; }
+.activity-meta { font-size: 12px; color: var(–muted); margin-top: 2px; }
+.activity-badge { font-size: 11px; background: var(–coach); color: var(–green); border: 1px solid var(–coach-border); padding: 2px 8px; border-radius: 10px; }
+.intervals-table { width: 100%; border-collapse: collapse; }
+.intervals-table th { font-size: 10px; color: var(–muted); text-transform: uppercase; letter-spacing: 0.08em; padding: 8px 16px; text-align: left; border-top: 1px solid var(–border); background: var(–surface2); }
+.intervals-table td { padding: 8px 16px; font-size: 13px; border-top: 1px solid var(–border); }
+.intervals-table tr:hover td { background: var(–surface2); }
+.pace-val { font-family: ‘Bebas Neue’, sans-serif; font-size: 1.1rem; color: var(–accent); }
+.gap-val { font-size: 12px; color: var(–green); }
+.drag-num { font-size: 11px; color: var(–muted); }
+.loading-intervals { padding: 16px; font-size: 13px; color: var(–muted); text-align: center; }
 
 /* Chat */
-#chat {
-flex: 1;
-overflow-y: auto;
-padding: 24px 28px;
-display: flex;
-flex-direction: column;
-gap: 16px;
-}
-.msg { display: flex; flex-direction: column; gap: 4px; animation: fadeUp 0.3s ease; }
-@keyframes fadeUp {
-from { opacity: 0; transform: translateY(8px); }
-to { opacity: 1; transform: translateY(0); }
-}
-.msg-label { font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(–muted); }
-.msg.user .msg-label { color: var(–accent2); align-self: flex-end; }
-.msg-bubble {
-background: var(–surface);
-border: 1px solid var(–border);
-border-radius: 4px 12px 12px 12px;
-padding: 12px 16px;
-font-size: 0.9rem;
-line-height: 1.6;
-max-width: 85%;
-}
-.msg.user .msg-bubble {
-background: var(–surface2);
-border-color: #333;
-border-radius: 12px 4px 12px 12px;
-align-self: flex-end;
-}
+#chatView { display: none; flex: 1; overflow-y: auto; padding: 16px 20px; flex-direction: column; gap: 12px; }
+#chatView.visible { display: flex; }
+#quickPrompts { display: none; padding: 8px 20px; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid var(–border); flex-shrink: 0; }
+#quickPrompts.visible { display: flex; }
+.quick-btn { background: transparent; border: 1px solid var(–border); color: var(–muted); padding: 5px 11px; font-family: ‘DM Sans’, sans-serif; font-size: 12px; border-radius: 20px; cursor: pointer; transition: all 0.15s; }
+.quick-btn:hover { border-color: var(–accent); color: var(–accent); }
+.msg { display: flex; flex-direction: column; gap: 3px; animation: fadeUp 0.25s ease; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.msg-label { font-size: 10px; color: var(–muted); text-transform: uppercase; letter-spacing: 0.1em; }
+.msg.user .msg-label { color: #ff6b35; align-self: flex-end; }
+.msg-bubble { background: var(–surface); border: 1px solid var(–border); border-radius: 4px 12px 12px 12px; padding: 10px 14px; font-size: 14px; line-height: 1.6; max-width: 85%; white-space: pre-wrap; }
+.msg.user .msg-bubble { background: var(–surface2); border-color: #333; border-radius: 12px 4px 12px 12px; align-self: flex-end; }
 .msg.coach .msg-bubble { background: var(–coach); border-color: var(–coach-border); }
 .msg-bubble strong { color: var(–accent); font-weight: 500; }
 .typing { display: flex; gap: 4px; padding: 4px 0; }
-.typing span {
-width: 6px; height: 6px;
-background: var(–accent);
-border-radius: 50%;
-animation: bounce 1s infinite;
-}
+.typing span { width: 6px; height: 6px; background: var(–accent); border-radius: 50%; animation: bounce 1s infinite; }
 .typing span:nth-child(2) { animation-delay: 0.15s; }
 .typing span:nth-child(3) { animation-delay: 0.3s; }
-@keyframes bounce {
-0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-30% { transform: translateY(-6px); opacity: 1; }
-}
+@keyframes bounce { 0%,60%,100%{transform:translateY(0);opacity:0.4} 30%{transform:translateY(-6px);opacity:1} }
 
-/* Quick prompts */
-#quickPrompts {
-display: none;
-padding: 0 28px 16px;
-gap: 8px;
-flex-wrap: wrap;
-}
-#quickPrompts.visible { display: flex; }
-.quick-btn {
-background: transparent;
-border: 1px solid var(–border);
-color: var(–muted);
-padding: 6px 12px;
-font-family: ‘DM Sans’, sans-serif;
-font-size: 0.75rem;
-border-radius: 20px;
-cursor: pointer;
-transition: all 0.15s;
-}
-.quick-btn:hover { border-color: var(–accent); color: var(–accent); }
-
-/* Input */
-#inputArea {
-display: none;
-padding: 16px 28px 24px;
-border-top: 1px solid var(–border);
-gap: 10px;
-background: var(–surface);
-}
+#inputArea { display: none; padding: 12px 20px 20px; border-top: 1px solid var(–border); gap: 8px; background: var(–surface); flex-shrink: 0; }
 #inputArea.visible { display: flex; }
-#msgInput {
-flex: 1;
-background: var(–bg);
-border: 1px solid var(–border);
-color: var(–text);
-padding: 12px 16px;
-font-family: ‘DM Sans’, sans-serif;
-font-size: 0.9rem;
-border-radius: 4px;
-outline: none;
-resize: none;
-transition: border-color 0.2s;
-min-height: 46px;
-max-height: 120px;
-}
+#msgInput { flex: 1; background: var(–bg); border: 1px solid var(–border); color: var(–text); padding: 11px 14px; font-family: ‘DM Sans’, sans-serif; font-size: 14px; border-radius: 4px; outline: none; resize: none; min-height: 44px; max-height: 100px; }
 #msgInput:focus { border-color: var(–accent); }
 #msgInput::placeholder { color: var(–muted); }
-.btn {
-background: var(–accent);
-color: #000;
-border: none;
-padding: 10px 18px;
-font-family: ‘Bebas Neue’, sans-serif;
-font-size: 1rem;
-letter-spacing: 0.08em;
-border-radius: 4px;
-cursor: pointer;
-transition: opacity 0.15s;
-white-space: nowrap;
-}
-.btn:hover { opacity: 0.85; }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-#loadingScreen {
-display: none;
-flex: 1;
-align-items: center;
-justify-content: center;
-flex-direction: column;
-gap: 16px;
-color: var(–muted);
-font-size: 0.85rem;
-}
-#loadingScreen.visible { display: flex; }
-.spinner {
-width: 32px; height: 32px;
-border: 2px solid var(–border);
-border-top-color: var(–accent);
-border-radius: 50%;
-animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
 </style>
 
 </head>
@@ -262,14 +101,12 @@ animation: spin 0.8s linear infinite;
 
 <header>
   <h1>Løpe-coach</h1>
-  <span id="headerSub">Powered by Strava + Claude</span>
+  <span id="headerSub">Strava + Claude</span>
 </header>
 
 <div id="loginScreen">
   <div class="login-logo">🏃</div>
-  <div class="login-text">
-    Koble til Strava-kontoen din for å få personlig coachingbasert på dine faktiske treningsdata.
-  </div>
+  <div class="login-text">Koble til Strava for å få personlig coaching basert på dine faktiske treningsdata — inkludert drag-analyse med høydemeter og GAP.</div>
   <button class="btn-strava" onclick="startOAuth()">
     <svg viewBox="0 0 24 24"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>
     Logg inn med Strava
@@ -278,23 +115,32 @@ animation: spin 0.8s linear infinite;
 
 <div id="loadingScreen">
   <div class="spinner"></div>
-  <span id="loadingText">Henter treningsdata...</span>
+  <span id="loadingText">Laster...</span>
 </div>
 
 <div id="statsStrip"></div>
-<div id="copyBtn" style="display:none; padding:12px 28px; border-bottom:1px solid #2a2a2a; background:#111;">
-  <button onclick="copyData()" style="background:#e8ff47; color:#000; border:none; padding:10px 20px; font-family:'Bebas Neue',sans-serif; font-size:1rem; letter-spacing:0.08em; border-radius:4px; cursor:pointer; width:100%;">
-    📋 Kopier treningsdata til Claude-coachen
-  </button>
-  <div id="copyStatus" style="font-size:12px; color:#666; margin-top:6px; text-align:center;"></div>
+
+<div id="copyBar">
+  <button class="btn" onclick="copyData()">📋 Kopier treningsdata</button>
+  <span id="copyStatus"></span>
 </div>
+
+<div id="tabs">
+  <div class="tab active" onclick="switchTab('chat')" id="tab-chat">💬 Coach</div>
+  <div class="tab" onclick="switchTab('intervals')" id="tab-intervals">⚡ Draganalyse</div>
+</div>
+
 <div id="quickPrompts">
-  <button class="quick-btn" onclick="sendQuick('Oppsummer forrige uke for meg')">📊 Ukesoppsummering</button>
-  <button class="quick-btn" onclick="sendQuick('Hva bør jeg fokusere på denne uken basert på trenddataene mine?')">🎯 Hva bør jeg trene?</button>
-  <button class="quick-btn" onclick="sendQuick('Hvordan er løpsformen mi sammenlignet med for en måned siden?')">📈 Formutvikling</button>
-  <button class="quick-btn" onclick="sendQuick('Foreslå en intervalløkt tilpasset mitt nivå')">⚡ Intervalløkt</button>
+  <button class="quick-btn" onclick="sendQuick('Oppsummer treningsutviklingen min det siste året')">📊 Årsoppsummering</button>
+  <button class="quick-btn" onclick="sendQuick('Hva bør jeg fokusere på de neste 6 ukene?')">🎯 Plan fremover</button>
+  <button class="quick-btn" onclick="sendQuick('Hvordan har intervalløktene mine utviklet seg?')">⚡ Intervallprogresjon</button>
+  <button class="quick-btn" onclick="sendQuick('Foreslå en intervalløkt basert på mitt nivå')">🏟️ Ny økt</button>
+  <button class="quick-btn" onclick="sendQuick('Jeg skal i pappapermisjon snart. Hvordan trener jeg smart med lite tid?')">👶 Permisjonstips</button>
 </div>
-<div id="chat"></div>
+
+<div id="chatView"></div>
+<div id="intervalView"></div>
+
 <div id="inputArea">
   <textarea id="msgInput" placeholder="Spør coachen..." rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
   <button class="btn" id="sendBtn" onclick="sendMessage()">Send</button>
@@ -307,332 +153,415 @@ const REDIRECT_URI = window.location.origin + window.location.pathname;
 
 let stravaData = null;
 let chatHistory = [];
+let intervalCache = {};
+let currentTab = 'chat';
 
-// --- OAuth flow ---
-
+// --- OAuth ---
 function startOAuth() {
-  const params = new URLSearchParams({
-    client_id: CLIENT_ID,
-    redirect_uri: REDIRECT_URI,
-    response_type: 'code',
-    approval_prompt: 'auto',
+  var params = new URLSearchParams({
+    client_id: CLIENT_ID, redirect_uri: REDIRECT_URI,
+    response_type: 'code', approval_prompt: 'auto',
     scope: 'read,activity:read'
   });
   window.location.href = 'https://www.strava.com/oauth/authorize?' + params.toString();
 }
 
 async function handleOAuthCallback(code) {
-  showLoading('Logger inn med Strava...');
-  try {
-    const res = await fetch('https://www.strava.com/oauth/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-        code: code,
-        grant_type: 'authorization_code'
-      })
-    });
-    const data = await res.json();
-    if (!data.access_token) throw new Error(data.message || 'Token-utveksling feilet');
-
-    // Store tokens
-    localStorage.setItem('strava_access_token', data.access_token);
-    localStorage.setItem('strava_refresh_token', data.refresh_token);
-    localStorage.setItem('strava_expires_at', data.expires_at);
-
-    // Clean URL
-    window.history.replaceState({}, document.title, window.location.pathname);
-
-    await loadStravaData(data.access_token);
-  } catch(err) {
-    showLogin();
-    alert('Innlogging feilet: ' + err.message);
-  }
-}
-
-async function refreshToken(refreshToken) {
-  const res = await fetch('https://www.strava.com/oauth/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-      refresh_token: refreshToken,
-      grant_type: 'refresh_token'
-    })
+  showLoading('Logger inn...');
+  var res = await fetch('https://www.strava.com/oauth/token', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ client_id: CLIENT_ID, client_secret: CLIENT_SECRET, code: code, grant_type: 'authorization_code' })
   });
-  const data = await res.json();
-  if (!data.access_token) throw new Error('Refresh feilet');
+  var data = await res.json();
+  if (!data.access_token) throw new Error(data.message || 'Token-feil');
   localStorage.setItem('strava_access_token', data.access_token);
   localStorage.setItem('strava_refresh_token', data.refresh_token);
   localStorage.setItem('strava_expires_at', data.expires_at);
-  return data.access_token;
+  window.history.replaceState({}, document.title, window.location.pathname);
+  await loadStravaData(data.access_token);
 }
 
 async function getValidToken() {
-  const expiresAt = parseInt(localStorage.getItem('strava_expires_at') || '0');
-  const now = Math.floor(Date.now() / 1000);
-  if (now >= expiresAt - 300) {
-    const rt = localStorage.getItem('strava_refresh_token');
+  var exp = parseInt(localStorage.getItem('strava_expires_at') || '0');
+  if (Math.floor(Date.now()/1000) >= exp - 300) {
+    var rt = localStorage.getItem('strava_refresh_token');
     if (!rt) return null;
-    return await refreshToken(rt);
+    var res = await fetch('https://www.strava.com/oauth/token', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_id: CLIENT_ID, client_secret: CLIENT_SECRET, refresh_token: rt, grant_type: 'refresh_token' })
+    });
+    var data = await res.json();
+    if (!data.access_token) return null;
+    localStorage.setItem('strava_access_token', data.access_token);
+    localStorage.setItem('strava_refresh_token', data.refresh_token);
+    localStorage.setItem('strava_expires_at', data.expires_at);
+    return data.access_token;
   }
   return localStorage.getItem('strava_access_token');
 }
 
-// --- UI helpers ---
+// --- Strava data ---
+async function loadStravaData(token) {
+  showLoading('Henter profil...');
+  var athleteRes = await fetch('https://www.strava.com/api/v3/athlete', { headers: { 'Authorization': 'Bearer ' + token } });
+  var athlete = await athleteRes.json();
+  if (!athlete.id) throw new Error(athlete.message || 'Ugyldig token');
+
+  showLoading('Henter aktiviteter (siste år)...');
+  var after = Math.floor((Date.now() - 365*24*3600*1000)/1000);
+  var actRes = await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=200&after=' + after, { headers: { 'Authorization': 'Bearer ' + token } });
+  var activities = await actRes.json();
+  if (!Array.isArray(activities)) throw new Error(activities.message || 'Feil');
+
+  var runs = activities.filter(function(a) { return a.type === 'Run' || a.sport_type === 'Run'; });
+  stravaData = { athlete: athlete, runs: runs };
+  showStats(runs);
+  showApp(athlete);
+}
+
+// --- Streams & interval detection ---
+async function fetchStreams(activityId) {
+  var token = await getValidToken();
+  if (!token) return null;
+  try {
+    var res = await fetch('https://www.strava.com/api/v3/activities/' + activityId + '/streams?keys=heartrate,velocity_smooth,time,altitude&key_by_type=true', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    return await res.json();
+  } catch(e) { return null; }
+}
+
+function calcGAP(paceMinKm, gradePct) {
+  // Simplified GAP formula: each 1% grade ≈ +8 sec/km uphill, -4 sec/km downhill
+  var adjustment = gradePct > 0 ? gradePct * 8 : gradePct * 4;
+  return paceMinKm - adjustment / 60;
+}
+
+function detectIntervals(streams) {
+  if (!streams || !streams.heartrate || !streams.velocity_smooth || !streams.time) return [];
+  var hr = streams.heartrate.data;
+  var vel = streams.velocity_smooth.data;
+  var time = streams.time.data;
+  var alt = streams.altitude ? streams.altitude.data : null;
+  if (!hr || !vel || !time || hr.length < 60) return [];
+
+  // Convert velocity to pace (min/km)
+  var paces = vel.map(function(v) { return v > 0.5 ? 1000/v/60 : 99; });
+
+  // Find threshold: 35th percentile pace of moving sections
+  var movingPaces = paces.filter(function(p) { return p < 15; }).slice().sort(function(a,b){return a-b;});
+  if (movingPaces.length < 10) return [];
+  var threshold = movingPaces[Math.floor(movingPaces.length * 0.35)];
+
+  var intervals = [];
+  var inInterval = false;
+  var startIdx = 0;
+  var SMOOTH = 8;
+
+  for (var i = SMOOTH; i < paces.length - SMOOTH; i++) {
+    var windowPace = 0;
+    for (var j = i-SMOOTH; j <= i+SMOOTH; j++) windowPace += paces[j];
+    windowPace /= (SMOOTH*2+1);
+    var isHard = windowPace < threshold * 0.87;
+
+    if (isHard && !inInterval) { inInterval = true; startIdx = i; }
+    else if (!isHard && inInterval) {
+      inInterval = false;
+      var duration = time[i] - time[startIdx];
+      if (duration >= 60) {
+        var hrSum=0, paceSum=0, elevGain=0, elevLoss=0, count=0;
+        for (var k=startIdx; k<i; k++) {
+          hrSum += hr[k]; paceSum += paces[k]; count++;
+          if (alt && k > startIdx) {
+            var diff = alt[k] - alt[k-1];
+            if (diff > 0) elevGain += diff; else elevLoss += Math.abs(diff);
+          }
+        }
+        var avgPace = paceSum/count;
+        var distKm = (duration/60) / avgPace;
+        var avgGrade = distKm > 0 ? (elevGain - elevLoss) / (distKm*1000) * 100 : 0;
+        var gap = calcGAP(avgPace, avgGrade);
+        var pMin=Math.floor(avgPace), pSec=Math.round((avgPace-pMin)*60).toString().padStart(2,'0');
+        var gMin=Math.floor(gap), gSec=Math.round((gap-gMin)*60).toString().padStart(2,'0');
+
+        intervals.push({
+          num: intervals.length+1,
+          duration: duration,
+          distKm: distKm.toFixed(2),
+          avgHR: Math.round(hrSum/count),
+          pace: pMin+':'+pSec,
+          gap: gMin+':'+gSec,
+          elevGain: Math.round(elevGain),
+          elevLoss: Math.round(elevLoss),
+          grade: avgGrade.toFixed(1)
+        });
+      }
+    }
+  }
+  return intervals;
+}
+
+// --- UI ---
+function showLoading(text) {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('loadingScreen').classList.add('visible');
+  document.getElementById('loadingText').textContent = text;
+}
 
 function showLogin() {
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('loadingScreen').classList.remove('visible');
 }
 
-function showLoading(text) {
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('loadingScreen').classList.add('visible');
-  document.getElementById('loadingText').textContent = text || 'Laster...';
-}
-
-function showApp() {
-  document.getElementById('loginScreen').style.display = 'none';
+function showApp(athlete) {
   document.getElementById('loadingScreen').classList.remove('visible');
+  document.getElementById('copyBar').classList.add('visible');
+  document.getElementById('tabs').classList.add('visible');
   document.getElementById('quickPrompts').classList.add('visible');
+  document.getElementById('chatView').classList.add('visible');
   document.getElementById('inputArea').classList.add('visible');
-}
-
-// --- Strava data ---
-
-async function loadStravaData(token) {
-  showLoading('Henter treningsdata...');
-
-  const athleteRes = await fetch('https://www.strava.com/api/v3/athlete', {
-    headers: { 'Authorization': 'Bearer ' + token }
-  });
-  const athlete = await athleteRes.json();
-
-  showLoading('Henter aktiviteter...');
-  const activitiesRes = await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=200&after=' + Math.floor((Date.now() - 365*24*3600*1000)/1000) + '', {
-    headers: { 'Authorization': 'Bearer ' + token }
-  });
-  const activities = await activitiesRes.json();
-
-  if (!Array.isArray(activities)) throw new Error(activities.message || 'Feil ved henting av aktiviteter');
-
-  const runs = activities.filter(function(a) { return a.type === 'Run' || a.sport_type === 'Run'; });
-  stravaData = { athlete, runs };
-
-  showStats(runs);
-  showApp();
-
   document.getElementById('headerSub').textContent = athlete.firstname + ' ' + athlete.lastname;
-
-  // Show copy button
-  var copyBtn = document.getElementById('copyBtn');
-  if (copyBtn) copyBtn.style.display = 'block';
-
-  addCoachMessage('Hei **' + athlete.firstname + '**! Jeg har lastet ' + runs.length + ' løpeøkter fra siste år. Trykk **Kopier treningsdata** og lim inn i Claude-coachen!');
+  addCoachMessage('Hei **' + athlete.firstname + '**! Lastet ' + stravaData.runs.length + ' løpeøkter fra siste år. Gå til **Draganalyse**-fanen for puls/pace/GAP per drag, eller still meg et spørsmål!');
 }
 
-function showStats(runs) {
-  const now = new Date();
-  const weekAgo = new Date(now - 7 * 24 * 3600 * 1000);
-  const monthAgo = new Date(now - 30 * 24 * 3600 * 1000);
-  const thisWeek = runs.filter(function(r) { return new Date(r.start_date) > weekAgo; });
-  const thisMonth = runs.filter(function(r) { return new Date(r.start_date) > monthAgo; });
-  const totalKmWeek = (thisWeek.reduce(function(s,r){ return s + r.distance; }, 0) / 1000).toFixed(1);
-  const totalKmMonth = (thisMonth.reduce(function(s,r){ return s + r.distance; }, 0) / 1000).toFixed(1);
-  const paceRuns = runs.filter(function(r){ return r.average_speed > 0; }).slice(0, 10);
-  const avgPace = paceRuns.length ? paceRuns.reduce(function(s,r){ return s + (1000/r.average_speed/60); }, 0) / paceRuns.length : 0;
-  const paceMin = Math.floor(avgPace);
-  const paceSec = Math.round((avgPace - paceMin) * 60).toString().padStart(2, '0');
-  const hrRuns = runs.filter(function(r){ return r.average_heartrate; }).slice(0,10);
-  const hrAvg = hrRuns.length ? Math.round(hrRuns.reduce(function(s,r){ return s + r.average_heartrate; }, 0) / hrRuns.length) : null;
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-chat').classList.toggle('active', tab==='chat');
+  document.getElementById('tab-intervals').classList.toggle('active', tab==='intervals');
+  document.getElementById('chatView').classList.toggle('visible', tab==='chat');
+  document.getElementById('intervalView').classList.toggle('visible', tab==='intervals');
+  document.getElementById('quickPrompts').classList.toggle('visible', tab==='chat');
+  document.getElementById('inputArea').classList.toggle('visible', tab==='chat');
+  if (tab === 'intervals') renderIntervalList();
+}
 
-  const strip = document.getElementById('statsStrip');
+function isIntervalRun(run) {
+  var name = (run.name || '').toLowerCase();
+  var keywords = ['intervall','x 400','x 1000','x 1200','x 1600','x 2000','x 2 km','tempo','drag','fartlek','bane','stadion'];
+  return keywords.some(function(k) { return name.includes(k); }) || run.average_heartrate > 155;
+}
+
+function renderIntervalList() {
+  var view = document.getElementById('intervalView');
+  if (!stravaData) return;
+  var candidates = stravaData.runs.filter(isIntervalRun).slice(0, 25);
+  view.innerHTML = '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Viser ' + candidates.length + ' hardøkter. Trykk på en økt for å laste drag-analyse.</div>';
+
+  candidates.forEach(function(run) {
+    var date = new Date(run.start_date).toLocaleDateString('no-NO');
+    var km = (run.distance/1000).toFixed(1);
+    var pace = run.average_speed > 0 ? 1000/run.average_speed/60 : 0;
+    var pMin=Math.floor(pace), pSec=Math.round((pace-pMin)*60).toString().padStart(2,'0');
+
+    var card = document.createElement('div');
+    card.className = 'activity-card';
+    card.innerHTML = '<div class="activity-header" onclick="loadIntervals(this, ' + run.id + ')">' +
+      '<div>' +
+        '<div class="activity-title">' + run.name + '</div>' +
+        '<div class="activity-meta">' + date + ' · ' + km + ' km · ' + pMin + ':' + pSec + '/km · ' + Math.round(run.average_heartrate||0) + ' bpm' +
+        (run.total_elevation_gain ? ' · ↑' + Math.round(run.total_elevation_gain) + 'm' : '') + '</div>' +
+      '</div>' +
+      '<span class="activity-badge">Vis drag ›</span>' +
+    '</div>' +
+    '<div id="intervals-' + run.id + '"></div>';
+    view.appendChild(card);
+  });
+}
+
+async function loadIntervals(header, activityId) {
+  var container = document.getElementById('intervals-' + activityId);
+  if (container.innerHTML && container.innerHTML !== '') {
+    container.innerHTML = '';
+    return;
+  }
+  container.innerHTML = '<div class="loading-intervals">Henter streams...</div>';
+
+  if (intervalCache[activityId]) {
+    renderIntervalTable(container, intervalCache[activityId]);
+    return;
+  }
+
+  var streams = await fetchStreams(activityId);
+  if (!streams) { container.innerHTML = '<div class="loading-intervals">Kunne ikke hente data.</div>'; return; }
+
+  var intervals = detectIntervals(streams);
+  intervalCache[activityId] = intervals;
+  renderIntervalTable(container, intervals);
+}
+
+function renderIntervalTable(container, intervals) {
+  if (!intervals || intervals.length === 0) {
+    container.innerHTML = '<div class="loading-intervals">Ingen tydelige drag detektert.</div>';
+    return;
+  }
+  var html = '<table class="intervals-table"><thead><tr>' +
+    '<th>Drag</th><th>Dist</th><th>Tid</th><th>Pace</th><th>GAP</th><th>Puls</th><th>Stigning</th>' +
+    '</tr></thead><tbody>';
+  intervals.forEach(function(iv) {
+    var durMin = Math.floor(iv.duration/60), durSec = (iv.duration%60).toString().padStart(2,'0');
+    var elevStr = iv.elevGain > 2 ? '↑'+iv.elevGain+'m' : iv.elevLoss > 2 ? '↓'+iv.elevLoss+'m' : '—';
+    var gradeStr = Math.abs(parseFloat(iv.grade)) > 0.3 ? ' ('+iv.grade+'%)' : '';
+    html += '<tr>' +
+      '<td><span class="drag-num">Drag ' + iv.num + '</span></td>' +
+      '<td>' + iv.distKm + ' km</td>' +
+      '<td>' + durMin + ':' + durSec + '</td>' +
+      '<td><span class="pace-val">' + iv.pace + '</span></td>' +
+      '<td><span class="gap-val">' + iv.gap + '/km</span></td>' +
+      '<td>' + iv.avgHR + ' bpm</td>' +
+      '<td>' + elevStr + gradeStr + '</td>' +
+    '</tr>';
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+// --- Stats ---
+function showStats(runs) {
+  var now = new Date();
+  var weekAgo = new Date(now - 7*24*3600*1000);
+  var monthAgo = new Date(now - 30*24*3600*1000);
+  var week = runs.filter(function(r){return new Date(r.start_date)>weekAgo;});
+  var month = runs.filter(function(r){return new Date(r.start_date)>monthAgo;});
+  var kmWeek = (week.reduce(function(s,r){return s+r.distance;},0)/1000).toFixed(1);
+  var kmMonth = (month.reduce(function(s,r){return s+r.distance;},0)/1000).toFixed(1);
+  var pRuns = runs.filter(function(r){return r.average_speed>0;}).slice(0,10);
+  var avg = pRuns.length ? pRuns.reduce(function(s,r){return s+1000/r.average_speed/60;},0)/pRuns.length : 0;
+  var pMin=Math.floor(avg), pSec=Math.round((avg-pMin)*60).toString().padStart(2,'0');
+  var hrR = runs.filter(function(r){return r.average_heartrate;}).slice(0,10);
+  var hr = hrR.length ? Math.round(hrR.reduce(function(s,r){return s+r.average_heartrate;},0)/hrR.length) : null;
+  var strip = document.getElementById('statsStrip');
   strip.innerHTML =
-    '<div class="stat"><div class="stat-val">' + totalKmWeek + '</div><div class="stat-label">km denne uka</div></div>' +
-    '<div class="stat"><div class="stat-val">' + totalKmMonth + '</div><div class="stat-label">km siste 30 dager</div></div>' +
-    '<div class="stat"><div class="stat-val">' + thisWeek.length + '</div><div class="stat-label">økter denne uka</div></div>' +
-    '<div class="stat"><div class="stat-val">' + paceMin + ':' + paceSec + '</div><div class="stat-label">snitt pace /km</div></div>' +
-    (hrAvg ? '<div class="stat"><div class="stat-val">' + hrAvg + '</div><div class="stat-label">snitt puls</div></div>' : '') +
-    '<div class="stat"><div class="stat-val">' + runs.length + '</div><div class="stat-label">økter lastet</div></div>';
+    stat(kmWeek, 'km denne uka') + stat(kmMonth, 'km siste 30d') +
+    stat(week.length, 'økter uka') + stat(pMin+':'+pSec, 'snitt pace') +
+    (hr ? stat(hr, 'snitt puls') : '') + stat(runs.length, 'økter totalt');
   strip.classList.add('visible');
 }
+function stat(v,l){return '<div class="stat"><div class="stat-val">'+v+'</div><div class="stat-label">'+l+'</div></div>';}
 
-// --- Chat ---
-
-function autoResize(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-}
-
-function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-}
-
-function formatText(text) {
-  return text
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/\n/g, '<br>');
-}
-
-function addCoachMessage(text) {
-  const chat = document.getElementById('chat');
-  const div = document.createElement('div');
-  div.className = 'msg coach';
-  div.innerHTML = '<div class="msg-label">🏃 Coach</div><div class="msg-bubble">' + formatText(text) + '</div>';
-  chat.appendChild(div);
-  chat.scrollTop = chat.scrollHeight;
-}
-
-function addUserMessage(text) {
-  const chat = document.getElementById('chat');
-  const div = document.createElement('div');
-  div.className = 'msg user';
-  div.innerHTML = '<div class="msg-label">Du</div><div class="msg-bubble">' + text + '</div>';
-  chat.appendChild(div);
-  chat.scrollTop = chat.scrollHeight;
-}
-
-function showTyping() {
-  const chat = document.getElementById('chat');
-  const div = document.createElement('div');
-  div.className = 'msg coach'; div.id = 'typing-indicator';
-  div.innerHTML = '<div class="msg-label">🏃 Coach</div><div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div>';
-  chat.appendChild(div);
-  chat.scrollTop = chat.scrollHeight;
-}
-
-function removeTyping() {
-  const t = document.getElementById('typing-indicator');
-  if (t) t.remove();
-}
-
-function buildStravaContext() {
+// --- Copy ---
+function buildContextText() {
   if (!stravaData) return '';
-  const summaries = stravaData.runs.slice(0, 20).map(function(r) {
-    const date = new Date(r.start_date).toLocaleDateString('no-NO');
-    const km = (r.distance / 1000).toFixed(2);
-    const duration = Math.round(r.moving_time / 60);
-    const pace = r.average_speed > 0 ? (1000 / r.average_speed / 60) : 0;
-    const pMin = Math.floor(pace);
-    const pSec = Math.round((pace - pMin) * 60).toString().padStart(2, '0');
-    const hr = r.average_heartrate ? ' | Puls: ' + Math.round(r.average_heartrate) + ' bpm' : '';
-    const elev = r.total_elevation_gain ? ' | Høydemeter: ' + Math.round(r.total_elevation_gain) + 'm' : '';
-    return date + ': ' + km + 'km på ' + duration + 'min (' + pMin + ':' + pSec + '/km)' + hr + elev + ' — ' + r.name;
+  var lines = stravaData.runs.map(function(r) {
+    var date = new Date(r.start_date).toLocaleDateString('no-NO');
+    var km = (r.distance/1000).toFixed(2);
+    var min = Math.round(r.moving_time/60);
+    var pace = r.average_speed>0 ? 1000/r.average_speed/60 : 0;
+    var pMin=Math.floor(pace), pSec=Math.round((pace-pMin)*60).toString().padStart(2,'0');
+    var hr = r.average_heartrate ? ' | Puls: '+Math.round(r.average_heartrate)+' bpm' : '';
+    var elev = r.total_elevation_gain ? ' | Hm: '+Math.round(r.total_elevation_gain)+'m' : '';
+    return date+': '+km+'km på '+min+'min ('+pMin+':'+pSec+'/km)'+hr+elev+' — '+r.name;
   }).join('\n');
-  return 'Løper: ' + stravaData.athlete.firstname + ' ' + stravaData.athlete.lastname + '\nSiste ' + stravaData.runs.length + ' løpeøkter:\n' + summaries;
-}
-
-async function sendQuick(text) {
-  document.getElementById('msgInput').value = text;
-  await sendMessage();
-}
-
-async function sendMessage() {
-  const input = document.getElementById('msgInput');
-  const text = input.value.trim();
-  if (!text || !stravaData) return;
-  input.value = ''; input.style.height = 'auto';
-  document.getElementById('sendBtn').disabled = true;
-  addUserMessage(text);
-  chatHistory.push({ role: 'user', content: text });
-  showTyping();
-
-  const systemPrompt = 'Du er en personlig løpe-coach. Analyser treningsdata og gi konkrete, motiverende råd på norsk.\n\n' + buildStravaContext() + '\n\nVær direkte, bruk faktiske tall. Bruk **fet** for viktige poeng. Svar kort og presist.';
-
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages: chatHistory
-      })
-    });
-    const data = await response.json();
-    const reply = data.content && data.content[0] ? data.content[0].text : 'Noe gikk galt.';
-    removeTyping();
-    chatHistory.push({ role: 'assistant', content: reply });
-    addCoachMessage(reply);
-  } catch(err) {
-    removeTyping();
-    addCoachMessage('Beklager, tilkoblingsfeil. Prøv igjen.');
-  }
-  document.getElementById('sendBtn').disabled = false;
-  input.focus();
-}
-
-// --- Init ---
-
-async function init() {
-  const params = new URLSearchParams(window.location.search);
-  const code = params.get('code');
-  const error = params.get('error');
-
-  if (error) {
-    showLogin();
-    return;
-  }
-
-  if (code) {
-    await handleOAuthCallback(code);
-    return;
-  }
-
-  // Check stored tokens
-  const stored = localStorage.getItem('strava_access_token');
-  if (stored) {
-    try {
-      showLoading('Kobler til...');
-      const token = await getValidToken();
-      if (token) {
-        await loadStravaData(token);
-        return;
-      }
-    } catch(e) {
-      localStorage.clear();
-    }
-  }
-
-  showLogin();
+  return 'Løper: '+stravaData.athlete.firstname+' '+stravaData.athlete.lastname+'\nAntall økter: '+stravaData.runs.length+'\n\n'+lines;
 }
 
 function copyData() {
-  if (!stravaData) return;
-  var lines = stravaData.runs.map(function(r) {
-    var date = new Date(r.start_date).toLocaleDateString('no-NO');
-    var km = (r.distance / 1000).toFixed(2);
-    var min = Math.round(r.moving_time / 60);
-    var pace = r.average_speed > 0 ? (1000 / r.average_speed / 60) : 0;
-    var pMin = Math.floor(pace);
-    var pSec = Math.round((pace - pMin) * 60).toString().padStart(2, '0');
-    var hr = r.average_heartrate ? ' | Puls: ' + Math.round(r.average_heartrate) + ' bpm' : '';
-    var elev = r.total_elevation_gain ? ' | Hm: ' + Math.round(r.total_elevation_gain) + 'm' : '';
-    return date + ': ' + km + 'km på ' + min + 'min (' + pMin + ':' + pSec + '/km)' + hr + elev + ' — ' + r.name;
-  });
-  var text = 'Løper: ' + stravaData.athlete.firstname + ' ' + stravaData.athlete.lastname + '\nAntall økter: ' + stravaData.runs.length + '\n\n' + lines.join('\n');
-  navigator.clipboard.writeText(text).then(function() {
-    document.getElementById('copyStatus').textContent = '✓ Kopiert! Lim inn i Claude-coachen.';
-    document.getElementById('copyStatus').style.color = '#7ec850';
-  }).catch(function() {
-    // Fallback
-    var ta = document.createElement('textarea');
-    ta.value = text;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
+  var text = buildContextText();
+  navigator.clipboard.writeText(text).then(function(){
+    document.getElementById('copyStatus').textContent = '✓ Kopiert!';
+    setTimeout(function(){document.getElementById('copyStatus').textContent='';}, 3000);
+  }).catch(function(){
+    var ta=document.createElement('textarea'); ta.value=text;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
     document.body.removeChild(ta);
     document.getElementById('copyStatus').textContent = '✓ Kopiert!';
-    document.getElementById('copyStatus').style.color = '#7ec850';
   });
 }
 
+// --- Chat ---
+function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
+function handleKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();} }
+
+function formatText(text) {
+  return text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+}
+
+function addCoachMessage(text) {
+  var chat = document.getElementById('chatView');
+  var div = document.createElement('div'); div.className='msg coach';
+  div.innerHTML='<div class="msg-label">🏃 Coach</div><div class="msg-bubble">'+formatText(text)+'</div>';
+  chat.appendChild(div); chat.scrollTop=chat.scrollHeight;
+}
+
+function addUserMessage(text) {
+  var chat = document.getElementById('chatView');
+  var div = document.createElement('div'); div.className='msg user';
+  div.innerHTML='<div class="msg-label">Du</div><div class="msg-bubble">'+text+'</div>';
+  chat.appendChild(div); chat.scrollTop=chat.scrollHeight;
+}
+
+function showTyping() {
+  var chat = document.getElementById('chatView');
+  var div = document.createElement('div'); div.className='msg coach'; div.id='typing';
+  div.innerHTML='<div class="msg-label">🏃 Coach</div><div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div>';
+  chat.appendChild(div); chat.scrollTop=chat.scrollHeight;
+}
+function removeTyping() { var t=document.getElementById('typing'); if(t) t.remove(); }
+
+async function sendQuick(text) { document.getElementById('msgInput').value=text; await sendMessage(); }
+
+async function sendMessage() {
+  var input = document.getElementById('msgInput');
+  var text = input.value.trim();
+  if (!text || !stravaData) return;
+  input.value=''; input.style.height='auto';
+  document.getElementById('sendBtn').disabled=true;
+  addUserMessage(text);
+  chatHistory.push({role:'user', content:text});
+  showTyping();
+
+  // Include interval analysis if available
+  var intervalSummary = '';
+  Object.keys(intervalCache).forEach(function(id) {
+    var run = stravaData.runs.find(function(r){return r.id==id;});
+    if (run && intervalCache[id].length > 0) {
+      var date = new Date(run.start_date).toLocaleDateString('no-NO');
+      intervalSummary += '\n\n' + date + ' — ' + run.name + ' (draganalyse):\n';
+      intervalCache[id].forEach(function(iv) {
+        intervalSummary += 'Drag '+iv.num+': '+iv.distKm+'km, '+iv.pace+'/km, GAP '+iv.gap+'/km, '+iv.avgHR+' bpm';
+        if (iv.elevGain>2) intervalSummary += ', ↑'+iv.elevGain+'m';
+        intervalSummary += '\n';
+      });
+    }
+  });
+
+  var system = 'Du er en personlig løpe-coach. Gi konkrete, motiverende råd på norsk.\n\n' +
+    buildContextText() +
+    (intervalSummary ? '\n\nDRAGANALYSE:\n' + intervalSummary : '') +
+    '\n\nVær direkte, bruk faktiske tall. Bruk **fet** for viktige poeng. Svar kort og presist.';
+
+  try {
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, system:system, messages:chatHistory })
+    });
+    var data = await res.json();
+    var reply = data.content&&data.content[0] ? data.content[0].text : 'Noe gikk galt.';
+    removeTyping();
+    chatHistory.push({role:'assistant', content:reply});
+    addCoachMessage(reply);
+  } catch(e) {
+    removeTyping();
+    addCoachMessage('Tilkoblingsfeil. Prøv igjen.');
+  }
+  document.getElementById('sendBtn').disabled=false;
+}
+
+// --- Init ---
+async function init() {
+  var params = new URLSearchParams(window.location.search);
+  var code = params.get('code');
+  if (params.get('error')) { showLogin(); return; }
+  if (code) { try { await handleOAuthCallback(code); } catch(e) { showLogin(); alert('Feil: '+e.message); } return; }
+  var stored = localStorage.getItem('strava_access_token');
+  if (stored) {
+    try {
+      showLoading('Kobler til...');
+      var token = await getValidToken();
+      if (token) { await loadStravaData(token); return; }
+    } catch(e) { localStorage.clear(); }
+  }
+  showLogin();
+}
 init();
 </script>
 
