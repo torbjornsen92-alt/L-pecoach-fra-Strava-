@@ -282,6 +282,12 @@ animation: spin 0.8s linear infinite;
 </div>
 
 <div id="statsStrip"></div>
+<div id="copyBtn" style="display:none; padding:12px 28px; border-bottom:1px solid #2a2a2a; background:#111;">
+  <button onclick="copyData()" style="background:#e8ff47; color:#000; border:none; padding:10px 20px; font-family:'Bebas Neue',sans-serif; font-size:1rem; letter-spacing:0.08em; border-radius:4px; cursor:pointer; width:100%;">
+    📋 Kopier treningsdata til Claude-coachen
+  </button>
+  <div id="copyStatus" style="font-size:12px; color:#666; margin-top:6px; text-align:center;"></div>
+</div>
 <div id="quickPrompts">
   <button class="quick-btn" onclick="sendQuick('Oppsummer forrige uke for meg')">📊 Ukesoppsummering</button>
   <button class="quick-btn" onclick="sendQuick('Hva bør jeg fokusere på denne uken basert på trenddataene mine?')">🎯 Hva bør jeg trene?</button>
@@ -407,7 +413,7 @@ async function loadStravaData(token) {
   const athlete = await athleteRes.json();
 
   showLoading('Henter aktiviteter...');
-  const activitiesRes = await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=30', {
+  const activitiesRes = await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=200&after=' + Math.floor((Date.now() - 365*24*3600*1000)/1000) + '', {
     headers: { 'Authorization': 'Bearer ' + token }
   });
   const activities = await activitiesRes.json();
@@ -422,7 +428,11 @@ async function loadStravaData(token) {
 
   document.getElementById('headerSub').textContent = athlete.firstname + ' ' + athlete.lastname;
 
-  addCoachMessage('Hei **' + athlete.firstname + '**! Jeg har lastet ' + runs.length + ' løpeøkter. Hva vil du vite?');
+  // Show copy button
+  var copyBtn = document.getElementById('copyBtn');
+  if (copyBtn) copyBtn.style.display = 'block';
+
+  addCoachMessage('Hei **' + athlete.firstname + '**! Jeg har lastet ' + runs.length + ' løpeøkter fra siste år. Trykk **Kopier treningsdata** og lim inn i Claude-coachen!');
 }
 
 function showStats(runs) {
@@ -591,6 +601,36 @@ async function init() {
   }
 
   showLogin();
+}
+
+function copyData() {
+  if (!stravaData) return;
+  var lines = stravaData.runs.map(function(r) {
+    var date = new Date(r.start_date).toLocaleDateString('no-NO');
+    var km = (r.distance / 1000).toFixed(2);
+    var min = Math.round(r.moving_time / 60);
+    var pace = r.average_speed > 0 ? (1000 / r.average_speed / 60) : 0;
+    var pMin = Math.floor(pace);
+    var pSec = Math.round((pace - pMin) * 60).toString().padStart(2, '0');
+    var hr = r.average_heartrate ? ' | Puls: ' + Math.round(r.average_heartrate) + ' bpm' : '';
+    var elev = r.total_elevation_gain ? ' | Hm: ' + Math.round(r.total_elevation_gain) + 'm' : '';
+    return date + ': ' + km + 'km på ' + min + 'min (' + pMin + ':' + pSec + '/km)' + hr + elev + ' — ' + r.name;
+  });
+  var text = 'Løper: ' + stravaData.athlete.firstname + ' ' + stravaData.athlete.lastname + '\nAntall økter: ' + stravaData.runs.length + '\n\n' + lines.join('\n');
+  navigator.clipboard.writeText(text).then(function() {
+    document.getElementById('copyStatus').textContent = '✓ Kopiert! Lim inn i Claude-coachen.';
+    document.getElementById('copyStatus').style.color = '#7ec850';
+  }).catch(function() {
+    // Fallback
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    document.getElementById('copyStatus').textContent = '✓ Kopiert!';
+    document.getElementById('copyStatus').style.color = '#7ec850';
+  });
 }
 
 init();
