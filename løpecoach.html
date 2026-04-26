@@ -589,41 +589,102 @@ async function loadIntervals(header, activityId) {
     intervalCache[activityId] = intervals;
     renderIntervalTable(container, intervals);
 
-    // Enrich with HR
+    // Enrich with HR using pulse-peak detection
     streamsPromise.then(function(streams) {
-      if (!streams || !streams.heartrate || !streams.velocity_smooth) return;
+      if (!streams || !streams.heartrate) return;
       var hr = streams.heartrate.data;
-      var vel = streams.velocity_smooth.data;
-      var time = streams.time.data;
-      if (!hr || !vel || !time) return;
+      var time = streams.time ? streams.time.data : null;
+      if (!hr || hr.length < 30) return;
 
-      // Find hard segments by velocity
-      var paces = vel.map(function(v) { return v > 0.5 ? 1000/v/60 : 99; });
-      var moving = paces.filter(function(p){return p<12;}).slice().sort(function(a,b){return a-b;});
-      if (moving.length < 5) return;
-      var threshold = moving[Math.floor(moving.length * 0.35)];
+      var numDrags = intervals.length;
 
+      // Smooth HR with rolling average (15 sec window)
+      var SMOOTH = 15;
+      var smoothHR = hr.map(function(_, i) {
+        var start = Math.max(0, i - SMOOTH);
+        var end2 = Math.min(hr.length - 1, i + SMOOTH);
+        var sum = 0;
+        for (var j = start; j <= end2; j++) sum += hr[j];
+        return sum / (end2 - start + 1);
+      });
+
+      // Find overall HR threshold: median of top 40%
+      var sorted = smoothHR.slice().sort(function(a,b){return b-a;});
+      var topN = sorted.slice(0, Math.floor(sorted.length * 0.4));
+      var threshold = topN[topN.length - 1];
+
+      // Find contiguous segments above threshold
       var segments = [];
       var inSeg = false, segStart = 0;
-      for (var i = 5; i < paces.length - 5; i++) {
-        var win = 0;
-        for (var j=i-5;j<=i+5;j++) win += paces[j];
-        win /= 11;
-        if (win < threshold * 0.88 && !inSeg) { inSeg = true; segStart = i; }
-        else if (win >= threshold * 0.88 && inSeg) {
+      var MIN_DURATION = 20; // minimum seconds per drag
+
+      for (var i = 0; i < smoothHR.length; i++) {
+        if (smoothHR[i] >= threshold && !inSeg) {
+          inSeg = true;
+          segStart = i;
+        } else if (smoothHR[i] < threshold && inSeg) {
           inSeg = false;
-          var dur = time[i] - time[segStart];
-          if (dur >= 30) {
+          var dur = time ? time[i] - time[segStart] : i - segStart;
+          if (dur >= MIN_DURATION) {
             var hrSum = 0;
-            for (var k=segStart;k<i;k++) hrSum += hr[k];
-            segments.push(Math.round(hrSum/(i-segStart)));
+            for (var k = segStart; k < i; k++) hrSum += hr[k];
+            segments.push({
+              start: segStart,
+              end: i,
+              avgHR: Math.round(hrSum / (i - segStart)),
+              peakHR: Math.round(Math.max.apply(null, hr.slice(segStart, i))),
+              duration: dur
+            });
           }
         }
       }
+      if (inSeg) {
+        var dur2 = time ? time[time.length-1] - time[segStart] : smoothHR.length - segStart;
+        if (dur2 >= MIN_DURATION) {
+          var hrSum2 = 0;
+          for (var k2 = segStart; k2 < hr.length; k2++) hrSum2 += hr[k2];
+          segments.push({
+            start: segStart, end: hr.length,
+            avgHR: Math.round(hrSum2 / (hr.length - segStart)),
+            peakHR: Math.round(Math.max.apply(null, hr.slice(segStart))),
+            duration: dur2
+          });
+        }
+      }
 
-      if (segments.length >= intervals.length) {
+      // If too many segments (noise), merge segments that are close together
+      var MERGE_GAP = 30; // merge if gap < 30 sec
+      var merged = [];
+      segments.forEach(function(seg) {
+        if (merged.length > 0) {
+          var prev = merged[merged.length - 1];
+          var gap = time ? time[seg.start] - time[prev.end] : seg.start - prev.end;
+          if (gap < MERGE_GAP) {
+            // Merge
+            var allHR = hr.slice(prev.start, seg.end);
+            prev.end = seg.end;
+            prev.avgHR = Math.round(allHR.reduce(function(s,v){return s+v;},0) / allHR.length);
+            prev.peakHR = Math.round(Math.max.apply(null, allHR));
+            prev.duration += seg.duration + gap;
+            return;
+          }
+        }
+        merged.push({start: seg.start, end: seg.end, avgHR: seg.avgHR, peakHR: seg.peakHR, duration: seg.duration});
+      });
+
+      // Sort by duration descending and take top N matching numDrags
+      var candidates = merged.slice().sort(function(a,b){return b.duration - a.duration;});
+      var top = candidates.slice(0, numDrags);
+
+      // Re-sort by start position to get chronological order
+      top.sort(function(a,b){return a.start - b.start;});
+
+      if (top.length >= numDrags) {
         intervals.forEach(function(iv, i) {
-          iv.avgHR = segments[i] || null;
+          if (top[i]) {
+            iv.avgHR = top[i].avgHR;
+            iv.peakHR = top[i].peakHR;
+          }
         });
         intervalCache[activityId] = intervals;
         var container2 = document.getElementById('intervals-' + activityId);
@@ -631,7 +692,7 @@ async function loadIntervals(header, activityId) {
       }
     });
     return;
-  }
+  }}
 
   // Fall back to streams
   container.innerHTML = '<div class="loading-intervals">Henter streams...</div>';
@@ -670,7 +731,7 @@ function renderIntervalTable(container, intervals) {
       '<td>' + iv.distKm + '</td>' +
       '<td>' + durMin + ':' + durSec + '</td>' +
       '<td><span class="pace-val">' + iv.pace + '</span></td>' +
-      (hasHR ? '<td>' + (iv.avgHR ? iv.avgHR+' bpm' : '—') + '</td>' : '') +
+      (hasHR ? '<td>' + (iv.avgHR ? iv.avgHR+'<span style="font-size:10px;color:var(--muted)"> / '+( iv.peakHR||'—')+'</span> bpm' : '—') + '</td>' : '') +
       (!fromDesc ? '<td><span class="gap-val">'+iv.gap+'</span></td><td>'+elevStr+gradeStr+'</td>' : '') +
     '</tr>';
   });
