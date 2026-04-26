@@ -497,14 +497,14 @@ function parseDragTimes(title, description) {
     }
   }
 
-  // Format: same-minute dash "3:39 - 41 - 44"
+  // Format: same-minute dash "3:39 - 41 - 44" — always pace per km (user convention)
   var dashMatch = text.match(/(\d):(\d{2})\s*[-]\s*((?:\d{2}\s*[-]\s*)*\d{2})/);
   if (dashMatch) {
     var baseMin2 = parseInt(dashMatch[1]);
     var allTokens = [dashMatch[1]+':'+dashMatch[2]].concat(dashMatch[3].split(/\s*-\s*/));
     var times2 = expandSameMinute(baseMin2, allTokens);
     if (times2.length >= 2) {
-      groups.push({ label: '', times: times2, isPace: false, distM: null });
+      groups.push({ label: '', times: times2, isPace: true, distM: null });
       return groups;
     }
   }
