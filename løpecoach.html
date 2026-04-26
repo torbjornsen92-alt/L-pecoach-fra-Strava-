@@ -379,29 +379,134 @@ async function fetchActivityDetail(activityId) {
   } catch(e) { return null; }
 }
 
+function kphToPace(kph) {
+  var secPerKm = 3600 / kph;
+  var pMin = Math.floor(secPerKm / 60);
+  var pSec = Math.round(secPerKm % 60).toString().padStart(2, '0');
+  return pMin + ':' + pSec;
+}
+
+function expandSameMinute(baseMin, tokens) {
+  // tokens like ["4:14", "14", "16"] or ["39", "41", "44"]
+  var result = [];
+  tokens.forEach(function(t) {
+    t = t.trim();
+    if (!t) return;
+    if (t.indexOf(':') > -1) {
+      result.push(t);
+      baseMin = parseInt(t.split(':')[0]);
+    } else if (t.length <= 2 && !isNaN(parseInt(t))) {
+      result.push(baseMin + ':' + t.padStart(2, '0'));
+    }
+  });
+  return result;
+}
+
 function parseDragTimes(title, description) {
-  var text = (title || '') + ' ' + (description || '');
-  
-  // Format 1: comma-separated full times like "4:35, 4:35, 4:30" (pace per km)
-  var commaMatch = text.match(/(\d:\d{2}(?:,\s*\d:\d{2})+)/);
-  if (commaMatch) {
-    var parts = commaMatch[1].split(',').map(function(s) { return s.trim(); });
-    if (parts.length >= 2) return { times: parts, isPace: true };
+  var text = (title || '') + '\n' + (description || '');
+  var groups = [];
+
+  // Format: km/h on treadmill — "12,7 - 12,9 - 13,1" or "12.7 - 12.9"
+  var kphMatch = text.match(/(1[0-9],[0-9](?:\s*[-]\s*1[0-9],[0-9])+)/);
+  if (kphMatch) {
+    var kphs = kphMatch[1].split(/\s*-\s*/).map(function(s) {
+      return parseFloat(s.replace(',', '.'));
+    });
+    if (kphs.length >= 2) {
+      groups.push({
+        label: 'Mølle',
+        times: kphs.map(kphToPace),
+        isPace: true,
+        distM: null
+      });
+      return groups;
+    }
   }
 
-  // Format 2: "M:SS - SS - SS" where subsequent numbers share same minute
-  var dashMatch = text.match(/(\d):(\d{2})\s*[-\u2013]\s*((\d{2}\s*[-\u2013]\s*)*\d{2})/);
-  if (dashMatch) {
-    var baseMin = parseInt(dashMatch[1]);
-    var times = [baseMin + ':' + dashMatch[2]];
-    var rest = dashMatch[3].split(/\s*[-\u2013]\s*/);
-    rest.forEach(function(s) {
-      s = s.trim();
-      if (s.length >= 1 && s.length <= 2) {
-        times.push(baseMin + ':' + s.padStart(2, '0'));
+  // Format: on/off pairs "4:06/4:40\n4:10/4:44" — multiple lines of A/B
+  var onOffLines = text.match(/(\d:\d{2}\/\d:\d{2}(?:\n\d:\d{2}\/\d:\d{2})+)/);
+  if (onOffLines) {
+    var pairs = onOffLines[1].split('\n').filter(function(l){return l.trim();});
+    var onTimes = [], offTimes = [];
+    pairs.forEach(function(p) {
+      var parts = p.split('/');
+      onTimes.push(parts[0].trim());
+      offTimes.push(parts[1].trim());
+    });
+    groups.push({ label: 'På', times: onTimes, isPace: true, distM: null });
+    groups.push({ label: 'Av', times: offTimes, isPace: true, distM: null });
+    return groups;
+  }
+
+  // Format: labeled groups "Opp: ... / Ned: ..." or "1200: ... / 800: ..."
+  // Split by labels
+  var labelPattern = /([A-Za-zÆØÅæøå]+|\d{3,4})\s*:/g;
+  var labelMatches = [];
+  var m;
+  while ((m = labelPattern.exec(text)) !== null) {
+    labelMatches.push({ label: m[1], idx: m.index + m[0].length });
+  }
+
+  if (labelMatches.length >= 2) {
+    labelMatches.forEach(function(lm, i) {
+      var end2 = i + 1 < labelMatches.length ? labelMatches[i+1].idx - labelMatches[i+1].label.length - 1 : text.length;
+      var segment = text.slice(lm.idx, end2);
+      // Try to find dist from label (e.g. "1200")
+      var distM = parseInt(lm.label);
+      if (isNaN(distM)) distM = null;
+
+      // Parse times from segment
+      var times = [];
+      // Full times with same-minute: "4:39, 42, 35" or "4:39 - 42 - 35"
+      var fullMatch = segment.match(/(\d:\d{2})((?:[,\s]*[-,]?\s*\d{2})*)/);
+      if (fullMatch) {
+        var baseMin = parseInt(fullMatch[1].split(':')[0]);
+        var tokens = [fullMatch[1]].concat(
+          fullMatch[2].split(/[,\s-]+/).filter(function(t){return t.trim().length > 0;})
+        );
+        times = expandSameMinute(baseMin, tokens);
+      }
+      if (times.length >= 1) {
+        groups.push({ label: lm.label, times: times, isPace: true, distM: distM });
       }
     });
-    if (times.length >= 2) return { times: times, isPace: false };
+    if (groups.length >= 2) return groups;
+  }
+
+  // Format: up/down pairs per line "4:28 / 3:46\n4:33 / 4:48"
+  var upDownLines = text.match(/(\d:\d{2}\s*\/\s*\d:\d{2})/g);
+  if (upDownLines && upDownLines.length >= 2) {
+    var upT = [], downT = [];
+    upDownLines.forEach(function(line) {
+      var parts = line.split('/');
+      upT.push(parts[0].trim());
+      downT.push(parts[1].trim());
+    });
+    groups.push({ label: 'Opp', times: upT, isPace: true, distM: null });
+    groups.push({ label: 'Ned', times: downT, isPace: true, distM: null });
+    return groups;
+  }
+
+  // Format: comma-separated full times "4:35, 4:35, 4:30"
+  var commaFull = text.match(/(\d:\d{2}(?:,\s*\d:\d{2}){1,})/);
+  if (commaFull) {
+    var parts2 = commaFull[1].split(',').map(function(s){return s.trim();});
+    if (parts2.length >= 2) {
+      groups.push({ label: '', times: parts2, isPace: true, distM: null });
+      return groups;
+    }
+  }
+
+  // Format: same-minute dash "3:39 - 41 - 44"
+  var dashMatch = text.match(/(\d):(\d{2})\s*[-]\s*((?:\d{2}\s*[-]\s*)*\d{2})/);
+  if (dashMatch) {
+    var baseMin2 = parseInt(dashMatch[1]);
+    var allTokens = [dashMatch[1]+':'+dashMatch[2]].concat(dashMatch[3].split(/\s*-\s*/));
+    var times2 = expandSameMinute(baseMin2, allTokens);
+    if (times2.length >= 2) {
+      groups.push({ label: '', times: times2, isPace: false, distM: null });
+      return groups;
+    }
   }
 
   return null;
@@ -412,10 +517,8 @@ function dragTimesToPace(timeStr, distanceMeters, isPace) {
   var min = parseInt(parts[0]);
   var sec = parseInt(parts[1]);
   if (isPace) {
-    // Already pace per km
     return min + ':' + parts[1];
   } else {
-    // Lap time — convert to pace per km
     var totalSec = min * 60 + sec;
     var paceSecPerKm = totalSec / (distanceMeters / 1000);
     var pMin = Math.floor(paceSecPerKm / 60);
@@ -455,30 +558,34 @@ async function loadIntervals(header, activityId) {
   var parsed = parseDragTimes(title, description);
   var dragDist = guessDragDistance(title);
 
-  if (parsed && parsed.times.length >= 2 && (dragDist || parsed.isPace)) {
-    // Fetch streams in parallel to get HR per drag
+  if (parsed && parsed.length >= 1) {
     var streamsPromise = fetchStreams(activityId);
+    var intervals = [];
+    var dragNum = 1;
 
-    var intervals = parsed.times.map(function(t, i) {
-      var parts = t.split(':');
-      var min = parseInt(parts[0]), sec = parseInt(parts[1]);
-      var totalSec = parsed.isPace
-        ? (dragDist ? (min * 60 + sec) * (dragDist / 1000) : min * 60 + sec)
-        : min * 60 + sec;
-      var pace = dragTimesToPace(t, dragDist || 1000, parsed.isPace);
-      return {
-        num: i + 1,
-        duration: Math.round(totalSec),
-        distKm: dragDist ? (dragDist / 1000).toFixed(2) : '—',
-        avgHR: null,
-        pace: pace,
-        gap: pace,
-        elevGain: 0, elevLoss: 0, grade: '0.0',
-        fromDescription: true
-      };
+    parsed.forEach(function(group) {
+      var distM = group.distM || dragDist;
+      group.times.forEach(function(t) {
+        var parts = t.split(':');
+        var min = parseInt(parts[0]), sec = parseInt(parts[1]);
+        var totalSec = group.isPace
+          ? (distM ? (min * 60 + sec) * (distM / 1000) : min * 60 + sec)
+          : min * 60 + sec;
+        var pace = group.isPace ? t : dragTimesToPace(t, distM || 1000, false);
+        intervals.push({
+          num: dragNum++,
+          label: group.label,
+          duration: Math.round(totalSec),
+          distKm: distM ? (distM / 1000).toFixed(2) : '—',
+          avgHR: null,
+          pace: pace,
+          gap: pace,
+          elevGain: 0, elevLoss: 0, grade: '0.0',
+          fromDescription: true
+        });
+      });
     });
 
-    // Show immediately, then enrich with HR from streams
     intervalCache[activityId] = intervals;
     renderIntervalTable(container, intervals);
 
@@ -542,25 +649,29 @@ function renderIntervalTable(container, intervals) {
     return;
   }
   var fromDesc = intervals[0].fromDescription;
-  var source = fromDesc ? '<div style="font-size:11px;color:var(--green);padding:8px 16px;">✓ Hentet fra økt-beskrivelse</div>' : '<div style="font-size:11px;color:var(--muted);padding:8px 16px;">Automatisk detektert fra GPS-data</div>';
+  var source = fromDesc
+    ? '<div style="font-size:11px;color:var(--green);padding:8px 16px;">✓ Fra beskrivelse</div>'
+    : '<div style="font-size:11px;color:var(--muted);padding:8px 16px;">GPS-detektert</div>';
+  var hasLabel = intervals.some(function(iv){return iv.label;});
+  var hasHR = intervals.some(function(iv){return iv.avgHR;});
   var html = source + '<table class="intervals-table"><thead><tr>' +
+    (hasLabel ? '<th></th>' : '') +
     '<th>Drag</th><th>Dist</th><th>Tid</th><th>Pace</th>' +
-    (fromDesc ? '' : '<th>GAP</th><th>Puls</th><th>Stigning</th>') +
+    (hasHR ? '<th>Puls</th>' : '') +
+    (!fromDesc ? '<th>GAP</th><th>Stigning</th>' : '') +
     '</tr></thead><tbody>';
   intervals.forEach(function(iv) {
     var durMin = Math.floor(iv.duration/60), durSec = (iv.duration%60).toString().padStart(2,'0');
     var elevStr = iv.elevGain > 2 ? '↑'+iv.elevGain+'m' : iv.elevLoss > 2 ? '↓'+iv.elevLoss+'m' : '—';
     var gradeStr = Math.abs(parseFloat(iv.grade)) > 0.3 ? ' ('+iv.grade+'%)' : '';
     html += '<tr>' +
-      '<td><span class="drag-num">Drag ' + iv.num + '</span></td>' +
-      '<td>' + iv.distKm + ' km</td>' +
+      (hasLabel ? '<td style="font-size:11px;color:var(--green);">' + (iv.label||'') + '</td>' : '') +
+      '<td><span class="drag-num">' + iv.num + '</span></td>' +
+      '<td>' + iv.distKm + '</td>' +
       '<td>' + durMin + ':' + durSec + '</td>' +
       '<td><span class="pace-val">' + iv.pace + '</span></td>' +
-      (fromDesc ? '' :
-        '<td><span class="gap-val">' + iv.gap + '/km</span></td>' +
-        '<td>' + (iv.avgHR || '—') + (iv.avgHR ? ' bpm' : '') + '</td>' +
-        '<td>' + elevStr + gradeStr + '</td>'
-      ) +
+      (hasHR ? '<td>' + (iv.avgHR ? iv.avgHR+' bpm' : '—') + '</td>' : '') +
+      (!fromDesc ? '<td><span class="gap-val">'+iv.gap+'</span></td><td>'+elevStr+gradeStr+'</td>' : '') +
     '</tr>';
   });
   html += '</tbody></table>';
