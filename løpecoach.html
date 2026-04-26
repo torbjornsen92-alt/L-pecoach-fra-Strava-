@@ -527,9 +527,11 @@ function dragTimesToPace(timeStr, distanceMeters, isPace) {
   }
 }
 
-function guessDragDistance(title) {
-  // Try to extract distance from title: "10 x 400 m", "6 x 1000", "3 x 2 km"
-  var m = title.match(/x\s*(\d+(?:[.,]\d+)?)\s*(km|m)?/i);
+function guessDragDistance(text) {
+  // Try to extract distance from title+description: "10 x 400 m", "6 x 1000", "3 x 2 km"
+  var m = text.match(/x\s*(\d+(?:[.,]\d+)?)\s*(km|m)?[.\s]/i);
+  if (!m) m = text.match(/x\s*(\d+(?:[.,]\d+)?)\s*(km|m)?$/im);
+  if (!m) m = text.match(/x\s*(\d+(?:[.,]\d+)?)\s*(km|m)?/i);
   if (!m) return null;
   var val = parseFloat(m[1].replace(',','.'));
   var unit = (m[2] || 'm').toLowerCase();
@@ -556,7 +558,7 @@ async function loadIntervals(header, activityId) {
   
   // Try description-based parsing first
   var parsed = parseDragTimes(title, description);
-  var dragDist = guessDragDistance(title);
+  var dragDist = guessDragDistance(title + ' ' + description);
 
   if (parsed && parsed.length >= 1) {
     var streamsPromise = fetchStreams(activityId);
